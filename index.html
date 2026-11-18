@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Математический тест — 20 уровней</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#10121c;color:#fff;font-family:Arial,sans-serif;min-height:100vh}
+.container{max-width:780px;margin:auto;padding:25px 16px}
+h1{text-align:center;color:#958cff;margin-bottom:8px}
+.subtitle{text-align:center;color:#aaa;line-height:1.5}
+.panel{background:#1c2030;padding:24px;border-radius:18px;margin-top:20px;box-shadow:0 12px 35px #0003}
+.levels{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+button{border:0;border-radius:10px;padding:14px;cursor:pointer;font-size:15px;font-weight:bold;transition:.18s}
+.level{background:#30364d;color:white;min-height:58px}
+.level:hover:not(:disabled){background:#6559d9;transform:translateY(-2px)}
+.level:disabled{opacity:.32;cursor:not-allowed}
+.answer{display:block;width:100%;margin:10px 0;background:#30364d;color:white;text-align:left}
+.answer:hover:not(:disabled){background:#5148a8}
+.answer.correct{background:#168653}
+.answer.wrong{background:#b83c4c}
+.primary{background:#7467ee;color:white;width:100%;margin-top:15px}
+.primary:hover{background:#9187ff}
+.progress{background:#30364d;height:10px;border-radius:10px;overflow:hidden;margin:15px 0}
+.bar{height:100%;background:#8175ff;width:0%;transition:.3s}
+.question{font-size:23px;line-height:1.4;margin:25px 0}
+.info{color:#aaa;line-height:1.5}
+.hidden{display:none}
+.result{text-align:center}
+.result h1{font-size:42px}
+.topline{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;color:#aaa}
+@media(max-width:520px){.levels{grid-template-columns:repeat(2,1fr)}.panel{padding:18px}.question{font-size:20px}}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>∑ Математический тест</h1>
+<p class="subtitle">20 уровней · 160 вопросов · От базовой арифметики до высшей математики</p>
+
+<div class="panel" id="menu">
+  <h2>Выбери уровень</h2>
+  <p class="info">Выбирай любой уровень в любом порядке. Для успешного прохождения уровня нужно правильно ответить минимум на 6 вопросов из 8.</p>
+  <div class="levels" id="levels"></div>
+  <p class="info" id="best"></p>
+</div>
+
+<div class="panel hidden" id="game">
+  <div class="topline"><span id="levelName"></span><span id="counter"></span></div>
+  <div class="progress"><div class="bar" id="bar"></div></div>
+  <div class="question" id="question"></div>
+  <div id="answers"></div>
+  <p id="feedback" aria-live="polite"></p>
+  <button class="primary hidden" id="next" onclick="nextQuestion()">Далее →</button>
+</div>
+
+<div class="panel hidden result" id="result">
+  <h2 id="resultTitle"></h2>
+  <h1 id="score"></h1>
+  <p id="resultText"></p>
+  <button class="primary" onclick="backToMenu()">Вернуться к уровням</button>
+  <button class="primary" id="retry" onclick="startLevel(currentLevel)">Повторить уровень</button>
+</div>
+</div>
+
+<script>
+const tests = [
+[
+["2 + 2 = ?",["3","4","5","6"],1],
+["5 + 7 = ?",["10","11","12","13"],2],
+["10 − 4 = ?",["5","6","7","8"],1],
+["3 × 3 = ?",["6","9","12","15"],1],
+["20 ÷ 4 = ?",["4","5","6","8"],1],
+["8 + 9 = ?",["16","17","18","19"],1],
+["15 − 7 = ?",["6","7","8","9"],2],
+["6 × 2 = ?",["10","11","12","14"],2]
+],
+[
+["25 + 37 = ?",["52","62","72","63"],1],
+["90 − 46 = ?",["44","45","46","54"],0],
+["12 × 8 = ?",["86","92","96","108"],2],
+["144 ÷ 12 = ?",["10","11","12","14"],2],
+["15 × 6 = ?",["80","85","90","95"],2],
+["125 + 275 = ?",["300","350","400","450"],2],
+["200 − 85 = ?",["105","115","125","135"],1],
+["16 × 7 = ?",["102","112","122","132"],1]
+],
+[
+["√81 = ?",["7","8","9","10"],2],
+["3² + 4² = ?",["12","20","25","49"],2],
+["½ + ¼ = ?",["½","¾","1","⅔"],1],
+["2³ × 3 = ?",["18","21","24","27"],2],
+["15% от 200 = ?",["20","25","30","35"],2],
+["7 × 12 − 24 = ?",["48","54","60","66"],2],
+["√144 + 6 = ?",["16","18","20","22"],1],
+["5³ = ?",["25","75","100","125"],3]
+],
+[
+["Реши: x + 17 = 42",["15","20","25","30"],2],
+["Реши: 3x = 36",["9","10","12","15"],2],
+["2x + 5 = 17",["5","6","7","8"],1],
+["20% от 350 = ?",["50","60","70","80"],2],
+["2⁵ = ?",["16","24","32","64"],2],
+["√225 = ?",["12","13","15","25"],2],
+["(12 + 8) × 3 = ?",["50","55","60","65"],2],
+["3/5 от 100 = ?",["40","50","60","70"],2]
+],
+[
+["Реши: 5x − 10 = 40",["8","9","10","12"],2],
+["√196 = ?",["12","13","14","16"],2],
+["3⁴ = ?",["27","64","81","128"],2],
+["(2 + 3)² × 2 = ?",["25","40","50","60"],2],
+["Если x² = 169 и x > 0, то x = ?",["11","12","13","14"],2],
+["25% от 480 = ?",["100","110","120","130"],2],
+["7! ÷ 6! = ?",["6","7","8","42"],1],
+["2x + 3 = 19",["6","7","8","9"],2]
+],
+[
+["Реши: x² = 196, x > 0",["12","13","14","15"],2],
+["log₂ 32 = ?",["3","4","5","6"],2],
+["3x − 7 = 2x + 9",["14","15","16","17"],2],
+["√625 = ?",["20","25","30","35"],1],
+["2⁸ = ?",["128","192","256","512"],2],
+["Сумма углов треугольника?",["90°","180°","270°","360°"],1],
+["Если 4x = 3x + 21, x = ?",["19","20","21","22"],2],
+["5! = ?",["60","100","120","150"],2]
+],
+[
+["Реши: x² − 9 = 0, x > 0",["2","3","6","9"],1],
+["log₃ 81 = ?",["2","3","4","5"],2],
+["sin 30° = ?",["0,25","0,5","0,75","1"],1],
+["Производная x² равна:",["x","2x","x³","2"],1],
+["2x² = 98, x > 0",["5","6","7","8"],2],
+["Сколько диагоналей у пятиугольника?",["3","4","5","6"],2],
+["3² × 3³ = ?",["81","162","243","729"],2],
+["log₁₀ 1000 = ?",["2","3","4","10"],1]
+],
+[
+["x² − 5x + 6 = 0. Больший корень?",["2","3","4","6"],1],
+["Производная 3x³ равна:",["3x²","6x","9x²","9x³"],2],
+["∫2x dx =",["x² + C","2x² + C","x + C","x³ + C"],0],
+["lim x→1 (x² − 1)/(x − 1) =",["0","1","2","Не существует"],2],
+["Если log₂ x = 7, то x = ?",["64","96","128","256"],2],
+["Сумма первых 10 натуральных чисел:",["45","50","55","60"],2],
+["Дискриминант x² − 6x + 9 = 0:",["0","9","18","36"],0],
+["Чему равен 0! ?",["0","1","Не определено","10"],1]
+],
+[
+["x + y = 10, x − y = 2. Найди x",["4","5","6","7"],2],
+["2x + 3 = 17",["5","6","7","8"],2],
+["(x + 2)(x − 3) = 0. Больший корень?",["−3","−2","2","3"],3],
+["3x − 2y = 4, x = 2. Найди y",["0","1","2","3"],1],
+["x/3 + 2 = 5",["6","8","9","12"],2],
+["4(x − 2) = 2x + 6",["5","6","7","8"],2],
+["x² − 7x + 12 = 0. Больший корень?",["2","3","4","6"],2],
+["2x + y = 11, x = 3. Найди y",["3","4","5","6"],2]
+],
+[
+["sin 60° = ?",["1/2","√2/2","√3/2","1"],2],
+["cos 60° = ?",["0","1/2","√2/2","1"],1],
+["tan 45° = ?",["0","1/2","1","√3"],2],
+["sin 90° = ?",["0","1/2","√2/2","1"],3],
+["cos 180° = ?",["−1","0","1/2","1"],0],
+["tan 30° = ?",["1","√3","√3/3","2"],2],
+["sin²30° + cos²30° = ?",["0","1/2","1","2"],2],
+["150° в радианах =",["π/3","π/2","5π/6","π"],2]
+],
+[
+["Производная x⁴ =",["x³","3x³","4x³","4x"],2],
+["Производная 5x² =",["5x","10x","10x²","2x"],1],
+["Производная sin(x) =",["sin(x)","−sin(x)","cos(x)","−cos(x)"],2],
+["Производная eˣ =",["x·eˣ","eˣ","ln(x)","1/x"],1],
+["Производная ln(x) =",["ln(x)","x","1/x","eˣ"],2],
+["Производная 3x + 2 =",["2","3","3x","5"],1],
+["Производная x⁻² =",["−2x⁻³","2x⁻³","−x⁻¹","x⁻³"],0],
+["Производная x² + 4x =",["2x","2x + 4","x + 4","2x² + 4"],1]
+],
+[
+["∫3x² dx =",["3x³ + C","x³ + C","6x + C","x² + C"],1],
+["∫cos(x) dx =",["−sin(x) + C","cos(x) + C","sin(x) + C","−cos(x) + C"],2],
+["∫1 dx =",["1 + C","x + C","x² + C","0"],1],
+["∫2x dx =",["2x² + C","x² + C","x + C","2 + C"],1],
+["∫eˣ dx =",["xeˣ + C","eˣ + C","ln(x) + C","eˣ/x + C"],1],
+["∫1/x dx =",["1/x² + C","x + C","ln|x| + C","eˣ + C"],2],
+["∫(4x + 1) dx =",["4x² + x + C","2x² + x + C","2x + 1 + C","x² + 4x + C"],1],
+["∫0 dx =",["0","1","x + C","C"],3]
+],
+[
+["lim x→2 (x² − 4)/(x − 2) =",["2","3","4","5"],2],
+["lim x→0 sin(x)/x =",["0","1","2","Не существует"],1],
+["lim x→∞ 1/x =",["0","1","∞","−1"],0],
+["lim x→3 (x + 2) =",["3","4","5","6"],2],
+["lim x→∞ (2x² + 1)/(x² − 3) =",["0","1","2","3"],2],
+["lim x→0 (1 − cos(x))/x² =",["0","1/2","1","2"],1],
+["lim x→1 (x³ − 1)/(x − 1) =",["1","2","3","4"],2],
+["lim x→∞ (3x + 1)/(x + 2) =",["1","2","3","4"],2]
+],
+[
+["Определитель [[1,2],[3,4]] =",["−2","2","4","−4"],0],
+["Определитель [[2,0],[0,3]] =",["5","6","8","9"],1],
+["Размерность матрицы с 3 строками и 2 столбцами =",["2×3","3×2","3×3","2×2"],1],
+["Сколько элементов в матрице 4×5?",["9","16","20","25"],2],
+["След матрицы [[2,1],[3,5]] =",["5","6","7","8"],3],
+["Определитель [[1,0],[0,1]] =",["0","1","2","−1"],1],
+["Если A имеет размер 2×3, а B — 3×4, размер AB =",["2×4","3×3","4×2","2×3"],0],
+["Сумма диагональных элементов [[2,1],[3,5]] =",["5","6","7","8"],3]
+],
+[
+["i² =",["1","−1","i","−i"],1],
+["(3 + 2i) + (1 + 4i) =",["4 + 6i","4 + 2i","3 + 6i","5 + 4i"],0],
+["Модуль числа 3 + 4i =",["3","4","5","7"],2],
+["i⁴ =",["−1","0","1","i"],2],
+["(2 + i)(2 − i) =",["3","4","5","6"],2],
+["Действительная часть числа 7 − 3i =",["−3","3","7","10"],2],
+["Мнимая часть числа 5 + 8i =",["5","8","13","−8"],1],
+["i⁶ =",["−1","1","i","−i"],0]
+],
+[
+["Вероятность орла при честной монете =",["1/4","1/3","1/2","1"],2],
+["Вероятность выпадения 6 на кубике =",["1/2","1/3","1/6","1/12"],2],
+["Независимые события имеют вероятности 1/2 и 1/2. Вероятность обоих =",["1/4","1/2","3/4","1"],0],
+["Сколькими способами можно переставить 3 разных предмета?",["3","6","9","12"],1],
+["Сколько сочетаний из 5 элементов по 2?",["5","10","15","20"],1],
+["Вероятность невозможного события =",["0","1/4","1/2","1"],0],
+["3 красных и 7 синих шаров. Вероятность достать красный =",["0,2","0,3","0,5","0,7"],1],
+["Сколько исходов у двух бросков монеты?",["2","3","4","6"],2]
+],
+[
+["НОД(48,18) =",["3","6","9","12"],1],
+["НОК(12,18) =",["24","30","36","48"],2],
+["Какое число простое?",["21","27","29","33"],2],
+["Остаток от 127 при делении на 10 =",["5","6","7","8"],2],
+["Сколько положительных делителей у 12?",["4","5","6","8"],2],
+["Сумма первых 20 натуральных чисел =",["190","200","210","220"],2],
+["2⁵ mod 7 =",["2","3","4","5"],2],
+["Число 1 является:",["Простым","Составным","Ни простым, ни составным","Чётным простым"],2]
+],
+[
+["Решение y' = 2x, y(0)=0:",["x²","2x²","x + 2","2x"],0],
+["Если y' = 3, то y =",["3x + C","x³ + C","3 + C","x/3 + C"],0],
+["Решение y' = y имеет вид:",["Ceˣ","Cx","C + x","eˣ + x"],0],
+["Порядок уравнения y'' + y = 0:",["1","2","3","4"],1],
+["Решение y' = 0 — это:",["y = x","y = C","y = x²","y = eˣ"],1],
+["Если y' = 2x + 1, то y =",["x² + x + C","2x² + x + C","x² + 1 + C","2x + 1 + C"],0],
+["Для y' = 4y разделение переменных даёт:",["dy/y = 4dx","dy = 4y dx","dy/4 = y dx","dy = 4 dx"],0],
+["Уравнение y'' − 3y' + 2y = 0 имеет порядок:",["1","2","3","5"],1]
+],
+[
+["Градиент f(x,y)=x²+y² равен:",["(x,y)","(2x,2y)","(2,2)","(x²,y²)"],1],
+["Частная производная x²y по x равна:",["x²","2xy","2x","xy"],1],
+["Частная производная x²y по y равна:",["x²","2xy","2x","y²"],0],
+["Расстояние между (0,0) и (3,4) =",["4","5","6","7"],1],
+["Объём шара радиуса r =",["πr²","2πr","4πr³/3","πr³"],2],
+["Площадь круга радиуса r =",["πr","2πr","πr²","4πr²"],2],
+["Если вектор (3,4), его длина =",["3","4","5","7"],2],
+["Сумма углов тетраэдра при одной вершине (в плоских гранях) не фиксирована как у плоского треугольника. Сумма углов треугольника на плоскости =",["90°","180°","270°","360°"],1]
+],
+[
+["Сколько корней у x² + 1 = 0 над действительными числами?",["0","1","2","Бесконечно много"],0],
+["Сумма бесконечной геометрической прогрессии с a₁=1, q=1/2 =",["1","2","3","Не существует"],1],
+["Если f(x)=x³, то f'(2) =",["6","8","12","16"],2],
+["Реши: 2ˣ = 16",["2","3","4","8"],2],
+["Чему равен det([[2,1],[1,2]])?",["2","3","4","5"],1],
+["Вероятность хотя бы одного орла за два броска честной монеты =",["1/4","1/2","3/4","1"],2],
+["Если z=1+i, то z·z̄ =",["0","1","2","2i"],2],
+["lim x→0 (eˣ−1)/x =",["0","1","e","Не существует"],1]
+]
+];
+
+const names = [
+"Начальный","Лёгкий","Средний","Выше среднего",
+"Продвинутый","Сложный","Эксперт","Экстремальный",
+"Высшая алгебра","Тригонометрия PRO","Математический анализ",
+"Интегральное исчисление","Теория пределов","Матричная алгебра",
+"Комплексные числа","Теория вероятностей","Продвинутая теория чисел",
+"Дифференциальные уравнения","Многомерная математика","Абсолютный математический ад"
+];
+
+let unlocked = Math.min(20, Math.max(1, Number(localStorage.getItem("mathUnlocked") || 1)));
+let currentLevel = 0, currentQuestion = 0, correct = 0, answered = false;
+
+function renderLevels(){
+  const container=document.getElementById("levels");
+  container.innerHTML="";
+  names.forEach((name,i)=>{
+    const b=document.createElement("button");
+    b.className="level";
+    b.textContent=(i+1)+". "+name;
+    b.disabled=false;
+    b.onclick=()=>startLevel(i);
+    container.appendChild(b);
+  });
+  document.getElementById("best").textContent="Доступны все 20 уровней · 160 вопросов";
+}
+function startLevel(level){
+  currentLevel=level; currentQuestion=0; correct=0;
+  document.getElementById("menu").classList.add("hidden");
+  document.getElementById("result").classList.add("hidden");
+  document.getElementById("game").classList.remove("hidden");
+  document.getElementById("retry").classList.add("hidden");
+  showQuestion();
+}
+function showQuestion(){
+  answered=false;
+  const q=tests[currentLevel][currentQuestion];
+  document.getElementById("levelName").textContent="Уровень "+(currentLevel+1)+" — "+names[currentLevel];
+  document.getElementById("counter").textContent="Вопрос "+(currentQuestion+1)+" из 8";
+  document.getElementById("bar").style.width=(currentQuestion/8*100)+"%";
+  document.getElementById("question").textContent=q[0];
+  document.getElementById("feedback").textContent="";
+  document.getElementById("next").classList.add("hidden");
+  const answers=document.getElementById("answers"); answers.innerHTML="";
+  q[1].forEach((answer,index)=>{
+    const b=document.createElement("button");
+    b.className="answer";
+    b.textContent=String.fromCharCode(65+index)+". "+answer;
+    b.onclick=()=>selectAnswer(index,b);
+    answers.appendChild(b);
+  });
+}
+function selectAnswer(index,button){
+  if(answered)return;
+  answered=true;
+  const q=tests[currentLevel][currentQuestion];
+  document.querySelectorAll(".answer").forEach((b,i)=>{
+    b.disabled=true;
+    if(i===q[2])b.classList.add("correct");
+  });
+  if(index===q[2]){
+    correct++;
+    document.getElementById("feedback").textContent="✓ Правильно!";
+  }else{
+    button.classList.add("wrong");
+    document.getElementById("feedback").textContent="✗ Неправильно. Правильный ответ: "+q[1][q[2]];
+  }
+  document.getElementById("bar").style.width=((currentQuestion+1)/8*100)+"%";
+  document.getElementById("next").classList.remove("hidden");
+}
+function nextQuestion(){
+  currentQuestion++;
+  if(currentQuestion<8)showQuestion(); else finishLevel();
+}
+function finishLevel(){
+  document.getElementById("game").classList.add("hidden");
+  document.getElementById("result").classList.remove("hidden");
+  const passed=correct>=6;
+  document.getElementById("resultTitle").textContent=passed?"Уровень пройден!":"Уровень не пройден";
+  document.getElementById("score").textContent=correct+" / 8";
+  let message=passed
+    ?"Отличная работа! Ты набрал не менее 6 правильных ответов."
+    :"Нужно набрать минимум 6 правильных ответов из 8. Попробуй ещё раз.";
+  if(passed && currentLevel===19){
+    document.getElementById("resultTitle").textContent="ПОЗДРАВЛЯЕМ! ВСЕ 20 УРОВНЕЙ ПРОЙДЕНЫ!";
+    message="Ты прошёл все 160 математических вопросов. Это выдающийся результат!";
+  }
+  document.getElementById("resultText").textContent=message;
+  document.getElementById("retry").classList.remove("hidden");
+}
+function backToMenu(){
+  document.getElementById("result").classList.add("hidden");
+  document.getElementById("menu").classList.remove("hidden");
+  renderLevels();
+}
+renderLevels();
+</script>
+</body>
+</html>
